@@ -2,7 +2,7 @@ import { getApperClient } from '@/services/apperClient';
 import { toast } from 'react-toastify';
 
 export const fileService = {
-  async create(fileData, taskId) {
+async create(fileData, taskId) {
     try {
       if (!taskId) {
         throw new Error("Task ID is required to create file records");
@@ -13,25 +13,49 @@ export const fileService = {
         throw new Error("ApperClient not initialized");
       }
 
-      // Convert files to API format if needed
-      let convertedFiles = fileData.file_data_c;
-      if (convertedFiles && convertedFiles.length > 0) {
+      const records = [];
+
+      // Handle regular files
+      if (fileData.file_data_c && fileData.file_data_c.length > 0) {
+        let convertedFiles = fileData.file_data_c;
         const { ApperFileUploader } = window.ApperSDK;
         convertedFiles = ApperFileUploader.toCreateFormat(convertedFiles);
+
+        records.push({
+          Name: `Task ${taskId} Files`,
+          file_name_c: fileData.file_data_c[0]?.Name || "Attached File",
+          file_size_c: fileData.file_data_c[0]?.Size || 0,
+          upload_date_c: new Date().toISOString(),
+          description_c: fileData.description || "File attachment",
+          file_type_c: fileData.file_data_c[0]?.Type || "application/octet-stream",
+          task_c: parseInt(taskId),
+          file_data_c: convertedFiles
+        });
       }
 
-      const params = {
-        records: [{
-          Name: fileData.name || `Task ${taskId} Files`,
-          file_name_c: fileData.file_data_c?.[0]?.Name || "Attached File",
-          file_size_c: fileData.file_data_c?.[0]?.Size || 0,
-          upload_date_c: new Date().toISOString(),
-          description_c: fileData.description || "",
-          task_c: parseInt(taskId),
-          file_data_c: convertedFiles || []
-        }]
-      };
+      // Handle images separately  
+      if (fileData.image_data_c && fileData.image_data_c.length > 0) {
+        let convertedImages = fileData.image_data_c;
+        const { ApperFileUploader } = window.ApperSDK;
+        convertedImages = ApperFileUploader.toCreateFormat(convertedImages);
 
+        records.push({
+          Name: `Task ${taskId} Images`,
+          file_name_c: fileData.image_data_c[0]?.Name || "Attached Image",
+          file_size_c: fileData.image_data_c[0]?.Size || 0,
+          upload_date_c: new Date().toISOString(),
+          description_c: fileData.description || "Image attachment",
+          file_type_c: fileData.image_data_c[0]?.Type || "image/jpeg",
+          task_c: parseInt(taskId),
+          file_data_c: convertedImages
+        });
+      }
+
+      if (records.length === 0) {
+        return null; // No files or images to create
+      }
+
+      const params = { records };
       const response = await apperClient.createRecord('file_c', params);
 
       if (!response.success) {
@@ -52,9 +76,7 @@ export const fileService = {
           });
         }
 
-        if (successful.length > 0) {
-          return successful[0].data;
-        }
+        return successful.map(r => r.data);
       }
 
       return null;
@@ -73,13 +95,14 @@ export const fileService = {
       }
 
       const params = {
-        fields: [
+fields: [
           {"field": {"Name": "Id"}},
           {"field": {"Name": "Name"}},
           {"field": {"Name": "file_name_c"}},
           {"field": {"Name": "file_size_c"}},
           {"field": {"Name": "upload_date_c"}},
           {"field": {"Name": "description_c"}},
+          {"field": {"Name": "file_type_c"}},
           {"field": {"Name": "file_data_c"}},
           {"field": {"Name": "task_c"}}
         ],

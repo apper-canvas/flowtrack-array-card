@@ -1,4 +1,5 @@
-import { useState } from "react"
+import React, { useState } from 'react'
+import { ApperImageFieldComponent } from '@/components/atoms/ImageUploader/ApperImageFieldComponent'
 import { motion } from "framer-motion"
 import Button from "@/components/atoms/Button"
 import Input from "@/components/atoms/Input"
@@ -13,8 +14,10 @@ const [description, setDescription] = useState("")
   const [priority, setPriority] = useState("medium")
   const [errors, setErrors] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [uploadedFiles, setUploadedFiles] = useState([])
+const [uploadedFiles, setUploadedFiles] = useState([])
+  const [uploadedImages, setUploadedImages] = useState([])
   const [fileError, setFileError] = useState(null)
+  
   const validateForm = () => {
     const newErrors = {}
     
@@ -41,19 +44,25 @@ const handleSubmit = async (e) => {
 
     try {
       // Get files from the file uploader
+// Get files and images separately
       let files = [];
+      let images = [];
+      
       if (window.ApperSDK) {
         try {
           const { ApperFileUploader } = window.ApperSDK;
           files = await ApperFileUploader.FileField.getFiles('file_data_c') || [];
+          images = await ApperFileUploader.FileField.getFiles('image_data_c') || [];
         } catch (fileGetError) {
           console.warn('Could not retrieve files from uploader:', fileGetError);
           files = uploadedFiles; // Fallback to state files
+          images = uploadedImages; // Fallback to state images
         }
       } else {
         files = uploadedFiles; // Fallback if SDK not available
+        images = uploadedImages; // Fallback if SDK not available
       }
-      console.log("files:",files)
+console.log("files:", files, "images:", images)
       const taskData = {
         title: title.trim(),
         description: description.trim(),
@@ -61,17 +70,18 @@ const handleSubmit = async (e) => {
         status: "active",
         createdAt: new Date().toISOString(),
         completedAt: null,
-        file_data_c: files
+        file_data_c: files,
+        image_data_c: images
       };
-
       await onAddTask(taskData);
 
       // Reset form
       setTitle("")
       setDescription("")
       setPriority("medium")
-      setErrors({})
+setErrors({})
       setUploadedFiles([])
+      setUploadedImages([])
       setFileError(null)
     } catch (error) {
       console.error("Error adding task:", error)
@@ -194,7 +204,7 @@ const handleSubmit = async (e) => {
             </Button>
 </div>
 
-          {/* File Upload Section */}
+{/* File Upload Section */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-slate-700">
               <div className="flex items-center space-x-2">
@@ -212,6 +222,28 @@ const handleSubmit = async (e) => {
                 apperPublicKey: import.meta.env.VITE_APPER_PUBLIC_KEY,
                 existingFiles: uploadedFiles,
                 fileCount: uploadedFiles.length
+              }}
+            />
+          </div>
+
+          {/* Image Upload Section */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-slate-700">
+              <div className="flex items-center space-x-2">
+                <ApperIcon name="Image" className="w-4 h-4" />
+                <span>Attach Images</span>
+              </div>
+            </label>
+            <ApperImageFieldComponent
+              elementId="task-images"
+              config={{
+                fieldName: 'image_data_c',
+                fieldKey: 'image_data_c',
+                tableName: 'file_c',
+                apperProjectId: import.meta.env.VITE_APPER_PROJECT_ID,
+                apperPublicKey: import.meta.env.VITE_APPER_PUBLIC_KEY,
+                existingFiles: uploadedImages,
+                fileCount: uploadedImages.length
               }}
             />
             {fileError && (
