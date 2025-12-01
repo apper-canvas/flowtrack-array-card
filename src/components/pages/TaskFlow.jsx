@@ -37,6 +37,7 @@ const data = await taskService.getAll()
   }, [])
 
   const handleAddTask = async (taskData) => {
+    console.log("taskData",taskData)
     try {
       const newTask = await taskService.create(taskData)
       setTasks(prev => [newTask, ...prev])
@@ -45,6 +46,7 @@ const data = await taskService.getAll()
       toast.error("Failed to add task")
       console.error("Error adding task:", err)
     }
+    return newTask
   }
 
   const handleUpdateTask = async (id, updates) => {
