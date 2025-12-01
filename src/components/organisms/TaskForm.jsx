@@ -5,14 +5,16 @@ import Input from "@/components/atoms/Input"
 import Select from "@/components/atoms/Select"
 import Textarea from "@/components/atoms/Textarea"
 import ApperIcon from "@/components/ApperIcon"
+import ApperFileFieldComponent from "@/components/atoms/FileUploader/ApperFileFieldComponent"
 
 const TaskForm = ({ onAddTask }) => {
   const [title, setTitle] = useState("")
-  const [description, setDescription] = useState("")
+const [description, setDescription] = useState("")
   const [priority, setPriority] = useState("medium")
   const [errors, setErrors] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
-
+  const [uploadedFiles, setUploadedFiles] = useState([])
+  const [fileError, setFileError] = useState(null)
   const validateForm = () => {
     const newErrors = {}
     
@@ -23,31 +25,54 @@ const TaskForm = ({ onAddTask }) => {
     return newErrors
   }
 
-  const handleSubmit = async (e) => {
+const handleSubmit = async (e) => {
     e.preventDefault()
     
-    const formErrors = validateForm()
-    setErrors(formErrors)
-    
-    if (Object.keys(formErrors).length > 0) return
-    
+    // Validation
+    const newErrors = {}
+    if (!title.trim()) newErrors.title = "Title is required"
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors)
+      return
+    }
+
     setIsSubmitting(true)
-    
+    setFileError(null)
+
     try {
-      await onAddTask({
-title: title.trim(),
+      // Get files from the file uploader
+      let files = [];
+      if (window.ApperSDK) {
+        try {
+          const { ApperFileUploader } = window.ApperSDK;
+          files = await ApperFileUploader.FileField.getFiles('file_data_c') || [];
+        } catch (fileGetError) {
+          console.warn('Could not retrieve files from uploader:', fileGetError);
+          files = uploadedFiles; // Fallback to state files
+        }
+      } else {
+        files = uploadedFiles; // Fallback if SDK not available
+      }
+
+      const taskData = {
+        title: title.trim(),
         description: description.trim(),
         priority,
         status: "active",
         createdAt: new Date().toISOString(),
-        completedAt: null
-      })
-      
+        completedAt: null,
+        file_data_c: files
+      };
+
+      await onAddTask(taskData);
+
       // Reset form
       setTitle("")
       setDescription("")
       setPriority("medium")
       setErrors({})
+      setUploadedFiles([])
+      setFileError(null)
     } catch (error) {
       console.error("Error adding task:", error)
     } finally {
@@ -164,6 +189,52 @@ title: title.trim(),
                 <div className="flex items-center space-x-2">
                   <ApperIcon name="Plus" className="w-4 h-4" />
                   <span>Add Task</span>
+                </div>
+              )}
+            </Button>
+</div>
+
+          {/* File Upload Section */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-slate-700">
+              <div className="flex items-center space-x-2">
+                <ApperIcon name="Paperclip" className="w-4 h-4" />
+                <span>Attach Files</span>
+              </div>
+            </label>
+            <ApperFileFieldComponent
+              elementId="task-files"
+              config={{
+                fieldName: 'file_data_c',
+                fieldKey: 'file_data_c',
+                tableName: 'file_c',
+                apperProjectId: import.meta.env.VITE_APPER_PROJECT_ID,
+                apperPublicKey: import.meta.env.VITE_APPER_PUBLIC_KEY,
+                existingFiles: uploadedFiles,
+                fileCount: uploadedFiles.length
+              }}
+            />
+            {fileError && (
+              <p className="text-error-500 text-xs mt-1">{fileError}</p>
+            )}
+          </div>
+
+          {/* Submit Button */}
+          <div className="flex justify-end">
+            <Button 
+              type="submit" 
+              disabled={isSubmitting}
+              className="bg-primary-500 hover:bg-primary-600 text-white px-6 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSubmitting ? (
+                <div className="flex items-center space-x-2">
+                  <ApperIcon name="Loader2" className="w-4 h-4 animate-spin" />
+                  <span>Creating Task...</span>
+                </div>
+              ) : (
+                <div className="flex items-center space-x-2">
+                  <ApperIcon name="Plus" className="w-4 h-4" />
+                  <span>Create Task</span>
                 </div>
               )}
             </Button>

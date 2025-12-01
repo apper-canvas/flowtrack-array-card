@@ -79,7 +79,7 @@ export const taskService = {
     }
   },
 
-  async create(taskData) {
+async create(taskData) {
     try {
       const apperClient = getApperClient();
       
@@ -106,12 +106,12 @@ export const taskService = {
         throw new Error(response.message);
       }
 
-      if (response.results) {
+if (response.results) {
         const successful = response.results.filter(r => r.success);
         const failed = response.results.filter(r => !r.success);
 
         if (failed.length > 0) {
-          console.error(`Failed to create ${failed.length} records:`, failed);
+          console.error(`Failed to create ${failed.length} records:${JSON.stringify(failed)}`);
           failed.forEach(record => {
             record.errors?.forEach(error => toast.error(`${error.fieldLabel}: ${error}`));
             if (record.message) toast.error(record.message);
@@ -119,7 +119,25 @@ export const taskService = {
         }
 
         if (successful.length > 0) {
-          return successful[0].data;
+          const createdTask = successful[0].data;
+          
+          // Handle file attachments if present
+          if (taskData.file_data_c && taskData.file_data_c.length > 0) {
+            try {
+              // Import fileService dynamically to avoid circular dependency
+              const { fileService } = await import('./fileService.js');
+              await fileService.create({
+                name: `Files for task: ${createdTask.title_c}`,
+                description: "Files attached during task creation",
+                file_data_c: taskData.file_data_c
+              }, createdTask.Id);
+            } catch (fileError) {
+              console.error('Error attaching files to task:', fileError);
+              toast.warning('Task created successfully, but some files could not be attached');
+            }
+          }
+          
+          return createdTask;
         }
       }
 
