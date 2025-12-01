@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { ApperIcon } from '@/components/ApperIcon';
+import ApperIcon from '@/components/ApperIcon';
 
 const ApperImageFieldComponent = ({ elementId, config }) => {
   const [isReady, setIsReady] = useState(false);
