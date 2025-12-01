@@ -53,7 +53,7 @@ const handleSubmit = async (e) => {
       } else {
         files = uploadedFiles; // Fallback if SDK not available
       }
-
+      console.log("files:",files)
       const taskData = {
         title: title.trim(),
         description: description.trim(),
